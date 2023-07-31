@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert' as convert;
@@ -32,6 +34,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
+enum Estado { concluido, falhaAoCarregar }
+
 class MyWidget extends StatefulWidget {
   const MyWidget({super.key});
 
@@ -41,6 +45,7 @@ class MyWidget extends StatefulWidget {
 
 class _MyWidgetState extends State<MyWidget> {
   final listaImagens = <Imagem>[];
+  var estado = Estado.concluido;
 
   @override
   void initState() {
@@ -50,7 +55,10 @@ class _MyWidgetState extends State<MyWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final conteudo = ImagemListView(listaImagens);
+    final conteudo = switch (estado) {
+      Estado.concluido => ImagemListView(listaImagens),
+      Estado.falhaAoCarregar => const ErrorScreen()
+    };
 
     return Scaffold(
       appBar: AppBar(
@@ -66,15 +74,16 @@ class _MyWidgetState extends State<MyWidget> {
       final url = await http.get(Uri.parse(
           'https://raw.githubusercontent.com/LinceTech/dart-workshops/main/flutter-async/ap_1/request.json'));
       if (url.statusCode == 200) {
-        print('Requisicao foi bem sucedida');
         final listaJson = convert.jsonDecode(url.body);
         for (final json in listaJson) {
           listaImagens.add(Imagem.fromJson(json));
         }
+      } else {
+        estado = Estado.falhaAoCarregar;
       }
     } catch (e) {
-      Text('Não foi possível carregar\n Erro: $e');
-      throw Exception('Não foi possivel carregar as fotos');
+      estado = Estado.falhaAoCarregar;
+      throw Exception('Não foi possivel carregar as fotos \n $e');
     } finally {
       setState(() => {});
     }
@@ -156,6 +165,23 @@ class ImagemPage extends StatelessWidget {
           imagem.thumbnailUrl,
           fit: BoxFit.fill,
           width: double.infinity,
+        ),
+      ),
+    );
+  }
+}
+
+class ErrorScreen extends StatelessWidget {
+  const ErrorScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text(
+        'Não foi possível carregar os dados',
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 15,
         ),
       ),
     );
